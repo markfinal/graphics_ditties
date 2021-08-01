@@ -1,6 +1,15 @@
 add_executable(metal)
+set_target_properties(
+    metal
+    PROPERTIES
+    MACOSX_BUNDLE ON
+    RESOURCE Main.storyboard
+    MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_LIST_DIR}/MacOSXBundleInfo.plist.in
+)
 target_sources(
     metal
     PRIVATE
-    main.cpp
+    AppController.swift
+    ViewController.swift
+    Main.storyboard
 )
