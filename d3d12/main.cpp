@@ -1,5 +1,6 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
+#include <dxgidebug.h>
 #include <cassert>
 
 int main()
@@ -13,6 +14,13 @@ int main()
     result = CreateDXGIFactory2(
         dxgiFactoryFlags,
         IID_PPV_ARGS(&factory)
+    );
+    assert(S_OK == result);
+
+    IDXGIDebug* dxgiDebug = nullptr;
+    result = DXGIGetDebugInterface1(
+        0,
+        IID_PPV_ARGS(&dxgiDebug)
     );
     assert(S_OK == result);
 
@@ -31,8 +39,14 @@ int main()
     );
     assert(S_OK == result);
 
+    dxgiDebug->ReportLiveObjects(
+        DXGI_DEBUG_ALL,
+        DXGI_DEBUG_RLO_ALL
+    );
+
     device->Release();
     debugInterface->Release();
+    dxgiDebug->Release();
     factory->Release();
 
     return 0;

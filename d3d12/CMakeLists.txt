@@ -10,4 +10,5 @@ target_link_libraries(
     PRIVATE
     d3d12.lib
     dxgi.lib
+    dxguid.lib
 )
