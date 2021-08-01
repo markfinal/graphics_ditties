@@ -10,6 +10,7 @@ target_sources(
     metal
     PRIVATE
     AppController.swift
+    Renderer.swift
     ViewController.swift
     Main.storyboard
 )

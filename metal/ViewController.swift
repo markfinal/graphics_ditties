@@ -6,6 +6,7 @@ import MetalKit
 class ViewController: NSViewController
 {
     var mtkView: MTKView!
+    var renderer: Renderer!
 
     override func viewDidLoad()
     {
@@ -26,5 +27,14 @@ class ViewController: NSViewController
 
         print("My GPU is: \(defaultDevice)")
         mtkView.device = defaultDevice
+
+        guard let tempRenderer = Renderer(mtkView: mtkView) else
+        {
+            print("Renderer failed to initialize")
+            return
+        }
+        renderer = tempRenderer
+
+        mtkView.delegate = renderer
     }
 }
