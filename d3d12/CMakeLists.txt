@@ -4,3 +4,10 @@ target_sources(
     PRIVATE
     main.cpp
 )
+
+target_link_libraries(
+    d3d12
+    PRIVATE
+    d3d12.lib
+    dxgi.lib
+)
