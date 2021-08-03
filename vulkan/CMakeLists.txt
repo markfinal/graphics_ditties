@@ -10,6 +10,13 @@ set(GLFW_BUILD_DOCS OFF)
 set(GLFW_INSTALL OFF)
 FetchContent_MakeAvailable(glfw)
 
+FetchContent_Declare(
+    vulkan_headers
+    GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
+    GIT_TAG        sdk-1.2.182.0
+)
+FetchContent_MakeAvailable(vulkan_headers)
+
 add_executable(vulkan)
 target_sources(
     vulkan
@@ -25,4 +32,5 @@ target_link_libraries(
     vulkan
     PRIVATE
     glfw
+    Vulkan-Headers
 )

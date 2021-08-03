@@ -5,6 +5,7 @@ project(graphics_ditties)
 enable_language(CXX)
 
 add_subdirectory(opengl)
+add_subdirectory(vulkan)
 if(APPLE)
   enable_language(Swift)
   add_subdirectory(metal)
