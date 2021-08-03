@@ -1,6 +1,14 @@
 import Metal
 import MetalKit
 
+extension Double
+{
+    static func random() -> Double
+    {
+        return Double(arc4random()) / Double(UInt32.max)
+    }
+}
+
 class Renderer : NSObject, MTKViewDelegate
 {
     let device: MTLDevice
@@ -25,8 +33,8 @@ class Renderer : NSObject, MTKViewDelegate
         // Get the default MTLRenderPassDescriptor from the MTKView argument
         guard let renderPassDescriptor = view.currentRenderPassDescriptor else { return }
 
-        // Change default settings. For example, we change the clear color from black to red.
-        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(1, 0, 0, 1)
+        // Change default settings. For example, we change the clear color from black to a random color.
+        renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(Double.random(), Double.random(), Double.random(), 1)
 
         // We compile renderPassDescriptor to a MTLRenderCommandEncoder.
         guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor) else { return }
