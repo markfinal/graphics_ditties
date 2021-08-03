@@ -17,20 +17,28 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(vulkan_headers)
 
-add_executable(vulkan)
+FetchContent_Declare(
+    vulkan_loader
+    GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Loader.git
+    GIT_TAG        sdk-1.2.182.0
+)
+FetchContent_MakeAvailable(vulkan_loader)
+
+add_executable(vulkan_ditty)
 target_sources(
-    vulkan
+    vulkan_ditty
     PRIVATE
     main.cpp
 )
 set_target_properties(
-    vulkan
+    vulkan_ditty
     PROPERTIES
     MACOSX_BUNDLE ON
 )
 target_link_libraries(
-    vulkan
+    vulkan_ditty
     PRIVATE
     glfw
     Vulkan-Headers
+    vulkan
 )

@@ -7,6 +7,10 @@ static void error_callback(int code, const char *description)
     std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
 }
 
+static void render(GLFWwindow *window)
+{
+}
+
 int main()
 {
     if (!glfwInit())
@@ -26,7 +30,40 @@ int main()
         glfwTerminate();
         return -1;
     }
-    
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    GLFWwindow *window = glfwCreateWindow(640, 480, "Vulkan ditty", nullptr, nullptr);
+
+    VkInstance instance;
+    {
+        VkApplicationInfo appInfo {};
+        appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+        appInfo.pApplicationName = "Vulkan ditty";
+        appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.pEngineName = "No Engine";
+        appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+        appInfo.apiVersion = VK_API_VERSION_1_2;
+    }
+
+    VkSurfaceKHR surface;
+    VkResult err = glfwCreateWindowSurface(instance, window, NULL, &surface);
+    if (err)
+    {
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return -1;
+    }
+
+    while (!glfwWindowShouldClose(window))
+    {
+        render(window);
+
+        glfwPollEvents();
+    }
+
+    glfwDestroyWindow(window);
+
     glfwTerminate();
 
     return 0;
