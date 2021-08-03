@@ -23,6 +23,11 @@ set_target_properties(
     PROPERTIES
     MACOSX_BUNDLE ON
 )
+target_compile_features(
+    opengl
+    PRIVATE
+    cxx_std_17
+)
 if(APPLE)
     target_compile_definitions(
         opengl

@@ -30,6 +30,11 @@ target_sources(
     PRIVATE
     main.cpp
 )
+target_compile_features(
+    vulkan_ditty
+    PRIVATE
+    cxx_std_17
+)
 set_target_properties(
     vulkan_ditty
     PROPERTIES

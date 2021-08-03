@@ -4,7 +4,11 @@ target_sources(
     PRIVATE
     main.cpp
 )
-
+target_compile_features(
+    d3d12
+    PRIVATE
+    cxx_std_17
+)
 target_link_libraries(
     d3d12
     PRIVATE

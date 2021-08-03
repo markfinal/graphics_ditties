@@ -37,7 +37,7 @@ int main()
 
     VkInstance instance;
     {
-        VkApplicationInfo appInfo {};
+        VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
         appInfo.pApplicationName = "Vulkan ditty";
         appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
