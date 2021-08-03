@@ -6,11 +6,16 @@ static void error_callback(int code, const char *description)
     std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
 }
 
+static float randomNumber()
+{
+    return float(rand()) / float(RAND_MAX);
+}
+
 static void render(GLFWwindow *window)
 {
     glfwMakeContextCurrent(window);
 
-    glClearColor(1, 0, 0, 1);
+    glClearColor(randomNumber(), randomNumber(), randomNumber(), 1);
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
