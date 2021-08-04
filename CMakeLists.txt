@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.15)
 
 project(graphics_ditties)
 
+# as FetchContent is quiet by default
+set(FETCHCONTENT_QUIET OFF CACHE INTERNAL "" FORCE)
+
 enable_language(CXX)
 
 add_subdirectory(opengl)
