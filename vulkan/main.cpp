@@ -112,6 +112,70 @@ static void checkSwapChainSupport(VkPhysicalDevice physicalDevice)
     throw std::runtime_error("Physical device doesn't support swap chains");
 }
 
+static void getQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR windowSurface)
+{
+    uint32_t queueFamilyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+
+    if (0 == queueFamilyCount)
+    {
+        throw std::runtime_error("Physical device has no queue families");
+    }
+
+    std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+
+    std::cout << "Physical device has " << queueFamilyCount << " queue families" << std::endl;
+
+    bool foundGraphicsQueueFamily = false;
+    bool foundPresentQueueFamily = false;
+    uint32_t graphicsQueueFamily;
+    uint32_t presentQueueFamily;
+
+    for (uint32_t i = 0; i < queueFamilyCount; i++)
+    {
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, windowSurface, &presentSupport);
+
+        if (queueFamilies[i].queueCount > 0 && queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+        {
+            graphicsQueueFamily = i;
+            foundGraphicsQueueFamily = true;
+
+            if (presentSupport)
+            {
+                presentQueueFamily = i;
+                foundPresentQueueFamily = true;
+                break;
+            }
+        }
+
+        if (!foundPresentQueueFamily && presentSupport)
+        {
+            presentQueueFamily = i;
+            foundPresentQueueFamily = true;
+        }
+    }
+
+    if (foundGraphicsQueueFamily)
+    {
+        std::cout << "Queue family #" << graphicsQueueFamily << " supports graphics" << std::endl;
+
+        if (foundPresentQueueFamily)
+        {
+            std::cout << "Queue family #" << presentQueueFamily << " supports presentation" << std::endl;
+        }
+        else
+        {
+            throw std::runtime_error("Could not find a valid queue family with present support");
+        }
+    }
+    else
+    {
+        throw std::runtime_error("Could not find a valid queue family with graphics support");
+    }
+}
+
 int main()
 {
     if (!glfwInit())
@@ -140,6 +204,7 @@ int main()
     VkSurfaceKHR surface = createSurface(instance, window);
     VkPhysicalDevice physicalDevice = getPhysicalDevice(instance);
     checkSwapChainSupport(physicalDevice);
+    getQueueFamilies(physicalDevice, surface);
 
     while (!glfwWindowShouldClose(window))
     {
