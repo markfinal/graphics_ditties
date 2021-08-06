@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <tuple>
 
 static void error_callback(int code, const char *description)
 {
@@ -113,7 +114,7 @@ static void checkSwapChainSupport(VkPhysicalDevice physicalDevice)
     throw std::runtime_error("Physical device doesn't support swap chains");
 }
 
-static void getQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR windowSurface)
+static std::tuple<uint32_t, uint32_t> getQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR windowSurface)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -175,6 +176,8 @@ static void getQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR windo
     {
         throw std::runtime_error("Could not find a valid queue family with graphics support");
     }
+
+    return std::make_tuple(graphicsQueueFamily, presentQueueFamily);
 }
 
 int main()
@@ -205,7 +208,7 @@ int main()
     VkSurfaceKHR surface = createSurface(instance, window);
     VkPhysicalDevice physicalDevice = getPhysicalDevice(instance);
     checkSwapChainSupport(physicalDevice);
-    getQueueFamilies(physicalDevice, surface);
+    auto [graphicsQueueFamily, presentQueueFamily] = getQueueFamilies(physicalDevice, surface);
 
     while (!glfwWindowShouldClose(window))
     {
