@@ -1,6 +1,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <iostream>
+#include <vector>
 
 static void error_callback(int code, const char *description)
 {
@@ -56,6 +57,61 @@ static VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow *window)
     return surface;
 }
 
+static VkPhysicalDevice getPhysicalDevice(VkInstance instance)
+{
+    VkPhysicalDevice physicalDevice;
+    uint32_t deviceCount = 1;
+    VkResult res = vkEnumeratePhysicalDevices(instance, &deviceCount, &physicalDevice);
+    if (res != VK_SUCCESS && res != VK_INCOMPLETE)
+    {
+        throw std::runtime_error("Enumerating physical devices failed");
+    }
+    if (0 == deviceCount)
+    {
+        throw std::runtime_error("No physical devices that support Vulkan");
+    }
+    VkPhysicalDeviceProperties deviceProperties;
+    VkPhysicalDeviceFeatures deviceFeatures;
+    vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+    vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
+
+    uint32_t supportedVersion[] =
+    {
+        VK_VERSION_MAJOR(deviceProperties.apiVersion),
+        VK_VERSION_MINOR(deviceProperties.apiVersion),
+        VK_VERSION_PATCH(deviceProperties.apiVersion)
+    };
+
+    std::cout << "Physical device supports version " << supportedVersion[0] << "." << supportedVersion[1] << "." << supportedVersion[2] << std::endl;
+
+    return physicalDevice;
+}
+
+static void checkSwapChainSupport(VkPhysicalDevice physicalDevice)
+{
+    uint32_t extensionCount = 0;
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, nullptr);
+
+    if (0 == extensionCount)
+    {
+        throw std::runtime_error("Physical device doesn't support any extensions");
+    }
+
+    std::vector<VkExtensionProperties> deviceExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extensionCount, deviceExtensions.data());
+
+    for (const auto& extension : deviceExtensions)
+    {
+        if (0 == strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME))
+        {
+            std::cout << "Physical device supports swap chains" << std::endl;
+            return;
+        }
+    }
+
+    throw std::runtime_error("Physical device doesn't support swap chains");
+}
+
 int main()
 {
     if (!glfwInit())
@@ -82,6 +138,8 @@ int main()
 
     VkInstance instance = createInstance();
     VkSurfaceKHR surface = createSurface(instance, window);
+    VkPhysicalDevice physicalDevice = getPhysicalDevice(instance);
+    checkSwapChainSupport(physicalDevice);
 
     while (!glfwWindowShouldClose(window))
     {
