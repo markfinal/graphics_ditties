@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstring>
 #include <tuple>
+#include <algorithm>
 
 static void error_callback(int code, const char *description)
 {
@@ -231,6 +232,165 @@ static std::tuple<VkDevice, VkQueue, VkQueue> createLogicalDevice(VkPhysicalDevi
     return std::make_tuple(device, graphicsQueue, presentQueue);
 }
 
+static VkSurfaceFormatKHR chooseSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+{
+    if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
+    {
+        return { VK_FORMAT_R8G8B8A8_UNORM, VK_COLORSPACE_SRGB_NONLINEAR_KHR };
+    }
+
+    for (const auto& availableSurfaceFormat : availableFormats)
+    {
+        if (availableSurfaceFormat.format == VK_FORMAT_R8G8B8A8_UNORM)
+        {
+            return availableSurfaceFormat;
+        }
+    }
+
+    return availableFormats[0];
+}
+
+static VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& surfaceCapabilities)
+{
+    if (surfaceCapabilities.currentExtent.width == -1)
+    {
+        VkExtent2D swapChainExtent = {};
+
+        swapChainExtent.width = std::min(std::max(640u, surfaceCapabilities.minImageExtent.width), surfaceCapabilities.maxImageExtent.width);
+        swapChainExtent.height = std::min(std::max(480u, surfaceCapabilities.minImageExtent.height), surfaceCapabilities.maxImageExtent.height);
+
+        return swapChainExtent;
+    }
+    else
+    {
+        return surfaceCapabilities.currentExtent;
+    }
+}
+
+VkPresentModeKHR choosePresentMode(const std::vector<VkPresentModeKHR> presentModes)
+{
+    for (const auto& presentMode : presentModes)
+    {
+        if (VK_PRESENT_MODE_MAILBOX_KHR == presentMode)
+        {
+            return presentMode;
+        }
+    }
+
+    return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+static std::tuple<VkSwapchainKHR, std::vector<VkImage>> createSwapChain(VkSurfaceKHR windowSurface, VkPhysicalDevice physicalDevice, VkDevice device)
+{
+    VkSurfaceCapabilitiesKHR surfaceCapabilities;
+    if (vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, windowSurface, &surfaceCapabilities) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to acquire presentation surface capabilities");
+    }
+
+    // Find supported surface formats
+    uint32_t formatCount;
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, windowSurface, &formatCount, nullptr) != VK_SUCCESS || 0 == formatCount)
+    {
+        throw std::runtime_error("failed to get number of supported surface formats");
+    }
+
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+    if (vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, windowSurface, &formatCount, surfaceFormats.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to get supported surface formats");
+    }
+
+    uint32_t presentModeCount;
+    if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, windowSurface, &presentModeCount, nullptr) != VK_SUCCESS || 0 == presentModeCount)
+    {
+        throw std::runtime_error("Failed to get number of supported presentation modes");
+    }
+
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    if (vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, windowSurface, &presentModeCount, presentModes.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to get supported presentation modes");
+    }
+
+    uint32_t imageCount = surfaceCapabilities.minImageCount + 1;
+    if (surfaceCapabilities.maxImageCount != 0 && imageCount > surfaceCapabilities.maxImageCount)
+    {
+        imageCount = surfaceCapabilities.maxImageCount;
+    }
+
+    std::cout << "Using " << imageCount << " images for swap chain" << std::endl;
+
+    VkSurfaceFormatKHR surfaceFormat = chooseSurfaceFormat(surfaceFormats);
+
+    VkExtent2D swapChainExtent = chooseSwapExtent(surfaceCapabilities);
+
+    if (!(surfaceCapabilities.supportedUsageFlags & VK_IMAGE_USAGE_TRANSFER_DST_BIT))
+    {
+        std::cerr << "swap chain image does not support VK_IMAGE_TRANSFER_DST usage" << std::endl;
+        //exit(1);
+    }
+
+    // Determine transformation to use (preferring no transform)
+    VkSurfaceTransformFlagBitsKHR surfaceTransform;
+    if (surfaceCapabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR)
+    {
+        surfaceTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    }
+    else
+    {
+        surfaceTransform = surfaceCapabilities.currentTransform;
+    }
+
+    VkPresentModeKHR presentMode = choosePresentMode(presentModes);
+
+    VkSwapchainCreateInfoKHR createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = windowSurface;
+    createInfo.minImageCount = imageCount;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.imageExtent = swapChainExtent;
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.queueFamilyIndexCount = 0;
+    createInfo.pQueueFamilyIndices = nullptr;
+    createInfo.preTransform = surfaceTransform;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = presentMode;
+    createInfo.clipped = VK_TRUE;
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+    VkSwapchainKHR swapChain;
+    if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &swapChain) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create swap chain");
+    }
+    else
+    {
+        std::cout << "Created swap chain" << std::endl;
+    }
+
+    uint32_t actualImageCount = 0;
+    if (vkGetSwapchainImagesKHR(device, swapChain, &actualImageCount, nullptr) != VK_SUCCESS || 0 == actualImageCount)
+    {
+        throw std::runtime_error("Failed to acquire number of swap chain images");
+    }
+
+    std::vector<VkImage> swapChainImages;
+    swapChainImages.resize(actualImageCount);
+
+    if (vkGetSwapchainImagesKHR(device, swapChain, &actualImageCount, swapChainImages.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to acquire swap chain images");
+    }
+
+    std::cout << "Acquired swap chain images" << std::endl;
+
+    return std::make_tuple(swapChain, swapChainImages);
+}
+
 int main()
 {
     if (!glfwInit())
@@ -261,6 +421,7 @@ int main()
     checkSwapChainSupport(physicalDevice);
     auto [graphicsQueueFamily, presentQueueFamily] = getQueueFamilies(physicalDevice, surface);
     auto [device, graphicsQueue, presentQueue] = createLogicalDevice(physicalDevice, graphicsQueueFamily, presentQueueFamily);
+    auto [swapChain, swapChainImages] = createSwapChain(surface, physicalDevice, device);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -269,6 +430,7 @@ int main()
         glfwPollEvents();
     }
 
+    vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
