@@ -60,8 +60,6 @@ int main()
         createInfo.enabledLayerCount = 0;
 
         // set VK_LOADER_DEBUG=all to debug this
-        // set VK_ICD_FILENAMES to $src/out/vulkan/moltenvk_ext-prefix/src/MoltenVK/icd/MoltenVK_icd.json
-        // copy libMoltenVK.dylib next to the json file above
         if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
             throw std::runtime_error("failed to create instance!");
         }

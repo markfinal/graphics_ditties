@@ -67,6 +67,8 @@ if(APPLE)
         USES_TERMINAL_DOWNLOAD TRUE
         CONFIGURE_COMMAND ""
         BUILD_COMMAND make -C <DOWNLOAD_DIR> macos
+            COMMAND COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/vulkan_ditty.app/Contents/Resources/vulkan/icd.d
+            COMMAND COMMAND ${CMAKE_COMMAND} -E copy <DOWNLOAD_DIR>/MoltenVK/icd/MoltenVK_icd.json ${CMAKE_CURRENT_BINARY_DIR}/vulkan_ditty.app/Contents/Resources/vulkan/icd.d/
         INSTALL_COMMAND ""
         SOURCE_DIR ""
         BUILD_IN_SOURCE TRUE
@@ -74,4 +76,12 @@ if(APPLE)
 
     # this is a runtime dependency only
     add_dependencies(vulkan_ditty moltenvk_ext)
+
+    ExternalProject_Get_property(moltenvk_ext DOWNLOAD_DIR)
+
+    add_custom_command(
+        TARGET vulkan_ditty
+        POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy ${DOWNLOAD_DIR}/Package/Release/MoltenVK/dylib/macOS/libMoltenVK.dylib ${CMAKE_CURRENT_BINARY_DIR}/vulkan_ditty.app/Contents/Resources/vulkan/icd.d/
+    )
 endif()
