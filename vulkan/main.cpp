@@ -11,10 +11,6 @@ static void error_callback(int code, const char *description)
     std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
 }
 
-static void render(GLFWwindow *window)
-{
-}
-
 static VkInstance createInstance()
 {
     VkApplicationInfo appInfo{};
@@ -391,6 +387,169 @@ static std::tuple<VkSwapchainKHR, std::vector<VkImage>> createSwapChain(VkSurfac
     return std::make_tuple(swapChain, swapChainImages);
 }
 
+static std::tuple<VkCommandPool, std::vector<VkCommandBuffer>> createCommandQueues(const uint32_t presentQueueFamily, VkDevice device, const std::vector<VkImage> &swapChainImages)
+{
+    VkCommandPoolCreateInfo poolCreateInfo = {};
+    poolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    poolCreateInfo.queueFamilyIndex = presentQueueFamily;
+
+    VkCommandPool commandPool;
+    if (vkCreateCommandPool(device, &poolCreateInfo, nullptr, &commandPool) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create command queue for presentation queue family");
+    }
+    else
+    {
+        std::cout << "Created command pool for presentation queue family" << std::endl;
+    }
+
+    std::vector<VkCommandBuffer> presentCommandBuffers;
+    presentCommandBuffers.resize(swapChainImages.size());
+
+    // Allocate presentation command buffers
+    // Note: secondary command buffers are only for nesting in primary command buffers
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = commandPool;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = (uint32_t) swapChainImages.size();
+
+    if (vkAllocateCommandBuffers(device, &allocInfo, presentCommandBuffers.data()) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to allocate presentation command buffers");
+    }
+    else
+    {
+        std::cout << "Allocated presentation command buffers" << std::endl;
+    }
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+    VkClearColorValue clearColor = {
+        { 0.4f, 0.6f, 0.9f, 1.0f } // R, G, B, A
+    };
+
+    VkImageSubresourceRange subResourceRange = {};
+    subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subResourceRange.baseMipLevel = 0;
+    subResourceRange.levelCount = 1;
+    subResourceRange.baseArrayLayer = 0;
+    subResourceRange.layerCount = 1;
+
+    for (uint32_t i = 0; i < swapChainImages.size(); i++)
+    {
+        VkImageMemoryBarrier presentToClearBarrier = {};
+        presentToClearBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        presentToClearBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        presentToClearBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        presentToClearBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        presentToClearBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        presentToClearBarrier.srcQueueFamilyIndex = presentQueueFamily;
+        presentToClearBarrier.dstQueueFamilyIndex = presentQueueFamily;
+        presentToClearBarrier.image = swapChainImages[i];
+        presentToClearBarrier.subresourceRange = subResourceRange;
+
+        VkImageMemoryBarrier clearToPresentBarrier = {};
+        clearToPresentBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        clearToPresentBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        clearToPresentBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+        clearToPresentBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        clearToPresentBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+        clearToPresentBarrier.srcQueueFamilyIndex = presentQueueFamily;
+        clearToPresentBarrier.dstQueueFamilyIndex = presentQueueFamily;
+        clearToPresentBarrier.image = swapChainImages[i];
+        clearToPresentBarrier.subresourceRange = subResourceRange;
+
+        vkBeginCommandBuffer(presentCommandBuffers[i], &beginInfo);
+
+        vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
+
+        vkCmdClearColorImage(presentCommandBuffers[i], swapChainImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &subResourceRange);
+
+        vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &clearToPresentBarrier);
+
+        if (vkEndCommandBuffer(presentCommandBuffers[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to record command buffer");
+        }
+        else
+        {
+            std::cout << "recorded command buffer for image " << i << std::endl;
+        }
+    }
+
+    return std::make_tuple(commandPool, presentCommandBuffers);
+}
+
+static std::tuple<VkSemaphore, VkSemaphore> createSemaphores(VkDevice device)
+{
+    VkSemaphoreCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderingFinishedSemaphore;
+    if (vkCreateSemaphore(device, &createInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(device, &createInfo, nullptr, &renderingFinishedSemaphore) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create semaphores");
+    }
+    else
+    {
+        std::cout << "Created semaphores" << std::endl;
+    }
+
+    return std::make_tuple(imageAvailableSemaphore, renderingFinishedSemaphore);
+}
+
+static void render(VkDevice device, VkSwapchainKHR swapChain, VkSemaphore imageAvailableSemaphore, VkSemaphore renderingFinishedSemaphore, const std::vector<VkCommandBuffer> &presentCommandBuffers, VkQueue presentQueue)
+{
+    uint32_t imageIndex;
+    VkResult res = vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+    if (res != VK_SUCCESS && res != VK_SUBOPTIMAL_KHR)
+    {
+        throw std::runtime_error("Failed to acquire image");
+    }
+
+    VkSubmitInfo submitInfo = {};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &imageAvailableSemaphore;
+
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &renderingFinishedSemaphore;
+
+    VkPipelineStageFlags waitDstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    submitInfo.pWaitDstStageMask = &waitDstStageMask;
+
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &presentCommandBuffers[imageIndex];
+
+    if (vkQueueSubmit(presentQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to submit draw command buffer");
+    }
+
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderingFinishedSemaphore;
+
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &swapChain;
+    presentInfo.pImageIndices = &imageIndex;
+
+    res = vkQueuePresentKHR(presentQueue, &presentInfo);
+
+    if (res != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to submit present command buffer");
+    }
+}
+
 int main()
 {
     if (!glfwInit())
@@ -422,14 +581,20 @@ int main()
     auto [graphicsQueueFamily, presentQueueFamily] = getQueueFamilies(physicalDevice, surface);
     auto [device, graphicsQueue, presentQueue] = createLogicalDevice(physicalDevice, graphicsQueueFamily, presentQueueFamily);
     auto [swapChain, swapChainImages] = createSwapChain(surface, physicalDevice, device);
+    auto [commandPool, presentCommandBuffers] = createCommandQueues(presentQueueFamily, device, swapChainImages);
+    auto [imageAvailableSemaphore, renderingFinishedSemaphore] = createSemaphores(device);
 
     while (!glfwWindowShouldClose(window))
     {
-        render(window);
+        render(device, swapChain, imageAvailableSemaphore, renderingFinishedSemaphore, presentCommandBuffers, presentQueue);
 
         glfwPollEvents();
     }
 
+    vkDestroySemaphore(device, renderingFinishedSemaphore, nullptr);
+    vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+    vkFreeCommandBuffers(device, commandPool, presentCommandBuffers.size(), presentCommandBuffers.data());
+    vkDestroyCommandPool(device, commandPool, nullptr);
     vkDestroySwapchainKHR(device, swapChain, nullptr);
     vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
