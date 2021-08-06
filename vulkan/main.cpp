@@ -37,11 +37,23 @@ static VkInstance createInstance()
 
     // set VK_LOADER_DEBUG=all to debug this
     VkInstance instance;
-    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS) {
+    if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
+    {
         throw std::runtime_error("failed to create instance!");
     }
 
     return instance;
+}
+
+static VkSurfaceKHR createSurface(VkInstance instance, GLFWwindow *window)
+{
+    VkSurfaceKHR surface;
+    VkResult err = glfwCreateWindowSurface(instance, window, NULL, &surface);
+    if (err)
+    {
+        throw std::runtime_error("failed to create surface!");
+    }
+    return surface;
 }
 
 int main()
@@ -69,15 +81,7 @@ int main()
     GLFWwindow *window = glfwCreateWindow(640, 480, "Vulkan ditty", nullptr, nullptr);
 
     VkInstance instance = createInstance();
-
-    VkSurfaceKHR surface;
-    VkResult err = glfwCreateWindowSurface(instance, window, NULL, &surface);
-    if (err)
-    {
-        glfwDestroyWindow(window);
-        glfwTerminate();
-        return -1;
-    }
+    VkSurfaceKHR surface = createSurface(instance, window);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -86,6 +90,7 @@ int main()
         glfwPollEvents();
     }
 
+    vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
 
     glfwDestroyWindow(window);
