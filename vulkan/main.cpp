@@ -180,6 +180,57 @@ static std::tuple<uint32_t, uint32_t> getQueueFamilies(VkPhysicalDevice physical
     return std::make_tuple(graphicsQueueFamily, presentQueueFamily);
 }
 
+static std::tuple<VkDevice, VkQueue, VkQueue> createLogicalDevice(VkPhysicalDevice physicalDevice, const uint32_t graphicsQueueFamily, const uint32_t presentQueueFamily)
+{
+    float queuePriority = 1.0f;
+
+    VkDeviceQueueCreateInfo queueCreateInfo[2] = {};
+
+    queueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo[0].queueFamilyIndex = graphicsQueueFamily;
+    queueCreateInfo[0].queueCount = 1;
+    queueCreateInfo[0].pQueuePriorities = &queuePriority;
+
+    queueCreateInfo[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo[0].queueFamilyIndex = presentQueueFamily;
+    queueCreateInfo[0].queueCount = 1;
+    queueCreateInfo[0].pQueuePriorities = &queuePriority;
+
+    VkDeviceCreateInfo deviceCreateInfo = {};
+    deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    deviceCreateInfo.pQueueCreateInfos = queueCreateInfo;
+
+    if (graphicsQueueFamily == presentQueueFamily)
+    {
+        deviceCreateInfo.queueCreateInfoCount = 1;
+    }
+    else
+    {
+        deviceCreateInfo.queueCreateInfoCount = 2;
+    }
+
+    const char* deviceExtensions = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+    deviceCreateInfo.enabledExtensionCount = 1;
+    deviceCreateInfo.ppEnabledExtensionNames = &deviceExtensions;
+
+    VkDevice device;
+    if (vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create logical device");
+    }
+
+    std::cout << "Created logical device" << std::endl;
+
+    VkQueue graphicsQueue;
+    VkQueue presentQueue;
+    vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
+    vkGetDeviceQueue(device, presentQueueFamily, 0, &presentQueue);
+
+    std::cout << "Acquired graphics and presentation queues" << std::endl;
+
+    return std::make_tuple(device, graphicsQueue, presentQueue);
+}
+
 int main()
 {
     if (!glfwInit())
@@ -209,6 +260,7 @@ int main()
     VkPhysicalDevice physicalDevice = getPhysicalDevice(instance);
     checkSwapChainSupport(physicalDevice);
     auto [graphicsQueueFamily, presentQueueFamily] = getQueueFamilies(physicalDevice, surface);
+    auto [device, graphicsQueue, presentQueue] = createLogicalDevice(physicalDevice, graphicsQueueFamily, presentQueueFamily);
 
     while (!glfwWindowShouldClose(window))
     {
@@ -217,6 +269,7 @@ int main()
         glfwPollEvents();
     }
 
+    vkDestroyDevice(device, nullptr);
     vkDestroySurfaceKHR(instance, surface, nullptr);
     vkDestroyInstance(instance, nullptr);
 
