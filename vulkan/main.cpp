@@ -2,6 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
+#include <cstring>
 
 static void error_callback(int code, const char *description)
 {
