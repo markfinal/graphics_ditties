@@ -53,3 +53,25 @@ target_link_libraries(
     Vulkan-Headers
     vulkan
 )
+if(APPLE)
+    include(ExternalProject)
+
+    # perform the fetchDependencies in the download, as if it runs in the build command
+    # the whole set of projects rebuild
+    ExternalProject_Add(
+        moltenvk_ext
+        DOWNLOAD_COMMAND git init
+            COMMAND git remote add origin https://www.github.com/KhronosGroup/MoltenVK.git
+            COMMAND git pull --depth=1 origin v1.1.4
+            COMMAND <DOWNLOAD_DIR>/fetchDependencies --macos -v
+        USES_TERMINAL_DOWNLOAD TRUE
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND make -C <DOWNLOAD_DIR> macos
+        INSTALL_COMMAND ""
+        SOURCE_DIR ""
+        BUILD_IN_SOURCE TRUE
+    )
+
+    # this is a runtime dependency only
+    add_dependencies(vulkan_ditty moltenvk_ext)
+endif()
