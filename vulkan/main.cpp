@@ -1,3 +1,5 @@
+// much code derived from https://gist.github.com/Overv/7a9200b0ab666004efcbde451433b039
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <iostream>
