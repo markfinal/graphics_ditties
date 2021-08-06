@@ -429,9 +429,7 @@ static std::tuple<VkCommandPool, std::vector<VkCommandBuffer>> createCommandQueu
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
-    VkClearColorValue clearColor = {
-        { 0.4f, 0.6f, 0.9f, 1.0f } // R, G, B, A
-    };
+    VkClearColorValue clearColor;
 
     VkImageSubresourceRange subResourceRange = {};
     subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -467,6 +465,19 @@ static std::tuple<VkCommandPool, std::vector<VkCommandBuffer>> createCommandQueu
         vkBeginCommandBuffer(presentCommandBuffers[i], &beginInfo);
 
         vkCmdPipelineBarrier(presentCommandBuffers[i], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &presentToClearBarrier);
+
+        if (0 == i)
+        {
+            clearColor = {
+                { 0.2f, 0.9f, 0.1f, 1.0f } // R, G, B, A
+            };
+        }
+        else
+        {
+            clearColor = {
+                { 1.0f, 0.6f, 0.9f, 1.0f } // R, G, B, A
+            };
+        }
 
         vkCmdClearColorImage(presentCommandBuffers[i], swapChainImages[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &subResourceRange);
 
