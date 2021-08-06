@@ -28,6 +28,7 @@ FetchContent_Declare(
     GIT_PROGRESS   TRUE
     USES_TERMINAL_DOWNLOAD TRUE
 )
+set(BUILD_WSI_WAYLAND_SUPPORT OFF CACHE INTERNAL "Build Wayland support")
 FetchContent_MakeAvailable(vulkan_loader)
 
 add_executable(vulkan_ditty)
