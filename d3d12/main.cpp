@@ -15,20 +15,20 @@ int main()
         dxgiFactoryFlags,
         IID_PPV_ARGS(&factory)
     );
-    assert(S_OK == result);
+    assert(SUCCEEDED(result));
 
     IDXGIDebug* dxgiDebug = nullptr;
     result = DXGIGetDebugInterface1(
         0,
         IID_PPV_ARGS(&dxgiDebug)
     );
-    assert(S_OK == result);
+    assert(SUCCEEDED(result));
 
     ID3D12Debug *debugInterface = nullptr;
     result = D3D12GetDebugInterface(
         IID_PPV_ARGS(&debugInterface)
     );
-    assert(S_OK == result);
+    assert(SUCCEEDED(result));
     debugInterface->EnableDebugLayer();
 
     ID3D12Device *device = nullptr;
@@ -37,7 +37,7 @@ int main()
         D3D_FEATURE_LEVEL_11_0,
         IID_PPV_ARGS(&device)
     );
-    assert(S_OK == result);
+    assert(SUCCEEDED(result));
 
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
