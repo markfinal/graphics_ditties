@@ -1,0 +1,89 @@
+#include <d3d11.h>
+#define GLFW_INCLUDE_NONE
+#include "GLFW/glfw3.h"
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "GLFW/glfw3native.h"
+#include <cassert>
+#include <iostream>
+
+static void error_callback(int code, const char* description)
+{
+    std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
+}
+
+static void render(GLFWwindow* window)
+{
+
+}
+
+int main()
+{
+    if (!glfwInit())
+    {
+        return -1;
+    }
+
+    glfwSetErrorCallback(error_callback);
+
+    int major, minor, revision;
+    glfwGetVersion(&major, &minor, &revision);
+
+    std::cout << "Running against GLFW " << major << "." << minor << "." << revision << std::endl;
+
+    GLFWwindow *window = glfwCreateWindow(640, 480, "opengl", NULL, NULL);
+
+    HRESULT result;
+
+    D3D_FEATURE_LEVEL feature_level;
+    UINT flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
+    flags |= D3D11_CREATE_DEVICE_DEBUG;
+
+    DXGI_SWAP_CHAIN_DESC swap_chain_descr = { 0 };
+    swap_chain_descr.BufferDesc.RefreshRate.Numerator = 0;
+    swap_chain_descr.BufferDesc.RefreshRate.Denominator = 1;
+    swap_chain_descr.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    swap_chain_descr.SampleDesc.Count = 1;
+    swap_chain_descr.SampleDesc.Quality = 0;
+    swap_chain_descr.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swap_chain_descr.BufferCount = 1;
+    swap_chain_descr.OutputWindow = glfwGetWin32Window(window);
+    swap_chain_descr.Windowed = true;
+
+    ID3D11Device* device_ptr = nullptr;
+    ID3D11DeviceContext* device_context_ptr = nullptr;
+    IDXGISwapChain* swap_chain_ptr = nullptr;
+
+    result = D3D11CreateDeviceAndSwapChain(
+        NULL,
+        D3D_DRIVER_TYPE_HARDWARE,
+        NULL,
+        flags,
+        NULL,
+        0,
+        D3D11_SDK_VERSION,
+        &swap_chain_descr,
+        &swap_chain_ptr,
+        &device_ptr,
+        &feature_level,
+        &device_context_ptr
+    );
+    assert(SUCCEEDED(result));
+
+    while (!glfwWindowShouldClose(window))
+    {
+        render(window);
+        glfwPollEvents();
+    }
+
+    swap_chain_ptr->Release();
+    device_context_ptr->Release();
+    device_ptr->Release();
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
+
+    return 0;
+
+    return 0;
+}
