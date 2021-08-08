@@ -11,9 +11,15 @@ static void error_callback(int code, const char* description)
     std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
 }
 
-static void render(GLFWwindow* window)
+static float randomNumber()
 {
+    return float(rand()) / float(RAND_MAX);
+}
 
+static void render(ID3D11DeviceContext *context, ID3D11RenderTargetView *rtv)
+{
+    const FLOAT color[4] = {randomNumber(), randomNumber(), randomNumber(), 1.0f};
+    context->ClearRenderTargetView(rtv, color);
 }
 
 int main()
@@ -49,9 +55,9 @@ int main()
     swap_chain_descr.OutputWindow = glfwGetWin32Window(window);
     swap_chain_descr.Windowed = true;
 
-    ID3D11Device* device_ptr = nullptr;
-    ID3D11DeviceContext* device_context_ptr = nullptr;
-    IDXGISwapChain* swap_chain_ptr = nullptr;
+    ID3D11Device *device_ptr = nullptr;
+    ID3D11DeviceContext *device_context_ptr = nullptr;
+    IDXGISwapChain *swap_chain_ptr = nullptr;
 
     result = D3D11CreateDeviceAndSwapChain(
         NULL,
@@ -69,12 +75,33 @@ int main()
     );
     assert(SUCCEEDED(result));
 
+    ID3D11RenderTargetView *render_target_view_ptr = nullptr;
+    {
+        ID3D11Texture2D* framebuffer;
+        result = swap_chain_ptr->GetBuffer(
+            0,
+            __uuidof(ID3D11Texture2D),
+            (void**)&framebuffer
+        );
+        assert(SUCCEEDED(result));
+
+        result = device_ptr->CreateRenderTargetView(
+            framebuffer,
+            0,
+            &render_target_view_ptr
+        );
+        assert(SUCCEEDED(result));
+        framebuffer->Release();
+    }
+
     while (!glfwWindowShouldClose(window))
     {
-        render(window);
+        render(device_context_ptr, render_target_view_ptr);
+        swap_chain_ptr->Present(0, 0);
         glfwPollEvents();
     }
 
+    render_target_view_ptr->Release();
     swap_chain_ptr->Release();
     device_context_ptr->Release();
     device_ptr->Release();
