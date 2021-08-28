@@ -36,7 +36,7 @@ int main()
 
     std::cout << "Running against GLFW " << major << "." << minor << "." << revision << std::endl;
 
-    GLFWwindow *window = glfwCreateWindow(640, 480, "opengl", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(640, 480, "D3D11 ditty", NULL, NULL);
 
     HRESULT result;
 

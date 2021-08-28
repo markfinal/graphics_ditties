@@ -37,7 +37,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    GLFWwindow *window = glfwCreateWindow(640, 480, "opengl", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(640, 480, "OpenGL ditty", NULL, NULL);
 
     while (!glfwWindowShouldClose(window))
     {
