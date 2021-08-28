@@ -172,6 +172,18 @@ static std::vector<ID3D12CommandAllocator*> createCommandAllocators(ID3D12Device
     return commandAllocator;
 }
 
+static ID3D12GraphicsCommandList *createCommandList(ID3D12Device *device, const std::vector<ID3D12CommandAllocator*> &commandAllocator)
+{
+    ID3D12GraphicsCommandList *commandList = nullptr;
+    HRESULT hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator[0], NULL, IID_PPV_ARGS(&commandList));
+    if (FAILED(hr))
+    {
+        return nullptr;
+    }
+    commandList->Close();
+    return commandList;
+}
+
 int main()
 {
     HRESULT result;
@@ -235,10 +247,14 @@ int main()
 
     auto commandAllocators = createCommandAllocators(device);
 
+    auto commandList = createCommandList(device, commandAllocators);
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
+
+    commandList->Release();
 
     for (auto ca : commandAllocators)
     {
