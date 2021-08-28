@@ -209,7 +209,7 @@ static std::tuple<HANDLE, std::vector<UINT64>, std::vector<ID3D12Fence*>> create
     return std::make_tuple(fenceEvent, fenceValue, fence);
 }
 
-static UINT WaitForPreviousFrame(IDXGISwapChain3 *swapChain, const std::vector<ID3D12Fence*> &fence, std::vector<UINT64> &fenceValue, const HANDLE fenceEvent)
+static UINT waitForPreviousFrame(IDXGISwapChain3 *swapChain, const std::vector<ID3D12Fence*> &fence, std::vector<UINT64> &fenceValue, const HANDLE fenceEvent)
 {
     HRESULT hr;
 
@@ -236,7 +236,21 @@ static UINT WaitForPreviousFrame(IDXGISwapChain3 *swapChain, const std::vector<I
     return frameIndex;
 }
 
-static UINT UpdatePipeline(
+static void flushGpu(std::vector<UINT64> &fenceValue, const std::vector<ID3D12Fence*> &fence, HANDLE fenceEvent, ID3D12CommandQueue *commandQueue)
+{
+    for (int i = 0; i < 2; i++)
+    {
+        uint64_t fenceValueForSignal = ++fenceValue[i];
+        commandQueue->Signal(fence[i], fenceValueForSignal);
+        if (fence[i]->GetCompletedValue() < fenceValue[i])
+        {
+            fence[i]->SetEventOnCompletion(fenceValueForSignal, fenceEvent);
+            WaitForSingleObject(fenceEvent, INFINITE);
+        }
+    }
+}
+
+static UINT updatePipeline(
     IDXGISwapChain3 *swapChain,
     const std::vector<ID3D12Fence*>& fence,
     std::vector<UINT64>& fenceValue,
@@ -247,7 +261,7 @@ static UINT UpdatePipeline(
     ID3D12DescriptorHeap *rtvDescriptorHeap,
     const UINT rtvDescriptorSize)
 {
-    auto frameIndex = WaitForPreviousFrame(swapChain, fence, fenceValue, fenceEvent);
+    auto frameIndex = waitForPreviousFrame(swapChain, fence, fenceValue, fenceEvent);
 
     HRESULT hr = commandAllocator[frameIndex]->Reset();
     if (FAILED(hr))
@@ -380,7 +394,7 @@ int main()
 
     while (!glfwWindowShouldClose(window))
     {
-        auto frameIndex = UpdatePipeline(
+        auto frameIndex = updatePipeline(
             swapChain,
             fence,
             fenceValue,
@@ -401,11 +415,7 @@ int main()
         glfwPollEvents();
     }
 
-    for (int i = 0; i < 2; ++i)
-    {
-        WaitForPreviousFrame(swapChain, fence, fenceValue, fenceEvent);
-        swapChain->Present(0, 0);
-    }
+    flushGpu(fenceValue, fence, fenceEvent, commandQueue);
 
     for (auto f : fence)
     {
