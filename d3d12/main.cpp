@@ -3,6 +3,18 @@
 #include <dxgidebug.h>
 #include <cassert>
 
+#define GLFW_INCLUDE_NONE
+#include "GLFW/glfw3.h"
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include "GLFW/glfw3native.h"
+
+#include <iostream>
+
+static void error_callback(int code, const char* description)
+{
+    std::cerr << "glfw error code: " << code << " (" << description << ")" << std::endl;
+}
+
 static IDXGIAdapter1 *enumerateAdapters(IDXGIFactory4 *factory)
 {
     HRESULT hr;
@@ -70,6 +82,40 @@ static ID3D12CommandQueue *createCommandQueue(ID3D12Device* device)
     return commandQueue;
 }
 
+static IDXGISwapChain3 *createSwapChain(const int width, const int height, ID3D12CommandQueue *commandQueue, IDXGIFactory4 *factory, HWND hwnd)
+{
+    DXGI_MODE_DESC backBufferDesc = {};
+    backBufferDesc.Width = width;
+    backBufferDesc.Height = height;
+    backBufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    DXGI_SAMPLE_DESC sampleDesc = {};
+    sampleDesc.Count = 1;
+
+    DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+    swapChainDesc.BufferCount = 2;
+    swapChainDesc.BufferDesc = backBufferDesc;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    swapChainDesc.OutputWindow = hwnd;
+    swapChainDesc.SampleDesc = sampleDesc;
+    swapChainDesc.Windowed = true;
+
+    IDXGISwapChain *tempSwapChain;
+
+    factory->CreateSwapChain(
+        commandQueue,
+        &swapChainDesc,
+        &tempSwapChain
+    );
+
+    auto swapChain = static_cast<IDXGISwapChain3*>(tempSwapChain);
+
+    auto frameIndex = swapChain->GetCurrentBackBufferIndex();
+
+    return swapChain;
+}
+
 int main()
 {
     HRESULT result;
@@ -113,10 +159,32 @@ int main()
 
     auto commandQueue = createCommandQueue(device);
 
+    if (!glfwInit())
+    {
+        return -1;
+    }
+
+    glfwSetErrorCallback(error_callback);
+
+    int major, minor, revision;
+    glfwGetVersion(&major, &minor, &revision);
+
+    std::cout << "Running against GLFW " << major << "." << minor << "." << revision << std::endl;
+
+    GLFWwindow *window = glfwCreateWindow(640, 480, "D3D12 ditty", NULL, NULL);
+
+    auto swapChain = createSwapChain(640, 480, commandQueue, factory, glfwGetWin32Window(window));
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
+
+    swapChain->Release();
+
+    glfwDestroyWindow(window);
+
+    glfwTerminate();
 
     commandQueue->Release();
     device->Release();
