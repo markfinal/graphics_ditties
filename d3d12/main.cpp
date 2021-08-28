@@ -31,6 +31,31 @@ static IDXGIAdapter1 *enumerateAdapters(IDXGIFactory4 *factory)
     return adapter;
 }
 
+static D3D_FEATURE_LEVEL checkFeatureSupport(ID3D12Device *device)
+{
+    static const D3D_FEATURE_LEVEL s_featureLevels[] =
+    {
+        D3D_FEATURE_LEVEL_12_1,
+        D3D_FEATURE_LEVEL_12_0,
+        D3D_FEATURE_LEVEL_11_1,
+        D3D_FEATURE_LEVEL_11_0,
+    };
+
+    D3D12_FEATURE_DATA_FEATURE_LEVELS featLevels =
+    {
+        _countof(s_featureLevels), s_featureLevels, D3D_FEATURE_LEVEL_11_0
+    };
+
+    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
+    HRESULT hr = device->CheckFeatureSupport(D3D12_FEATURE_FEATURE_LEVELS, &featLevels, sizeof(featLevels));
+    if (SUCCEEDED(hr))
+    {
+        featureLevel = featLevels.MaxSupportedFeatureLevel;
+    }
+
+    return featureLevel;
+}
+
 int main()
 {
     HRESULT result;
@@ -69,6 +94,8 @@ int main()
         IID_PPV_ARGS(&device)
     );
     assert(SUCCEEDED(result));
+
+    checkFeatureSupport(device);
 
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
