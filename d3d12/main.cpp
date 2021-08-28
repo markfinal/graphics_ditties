@@ -118,7 +118,7 @@ static IDXGISwapChain3 *createSwapChain(const int width, const int height, ID3D1
     return swapChain;
 }
 
-static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRenderTargetViews(ID3D12Device *device, IDXGISwapChain3 *swapChain)
+static std::tuple<ID3D12DescriptorHeap*, UINT, std::vector<ID3D12Resource*>> createRenderTargetViews(ID3D12Device *device, IDXGISwapChain3 *swapChain)
 {
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
     rtvHeapDesc.NumDescriptors = 2;
@@ -128,7 +128,7 @@ static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRe
     HRESULT hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap));
     if (FAILED(hr))
     {
-        return std::make_tuple(nullptr, std::vector<ID3D12Resource*>());
+        return std::make_tuple(nullptr, 0, std::vector<ID3D12Resource*>());
     }
 
     auto rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -144,7 +144,7 @@ static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRe
         hr = swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
         if (FAILED(hr))
         {
-            return std::make_tuple(nullptr, std::vector<ID3D12Resource*>());
+            return std::make_tuple(nullptr, 0, std::vector<ID3D12Resource*>());
         }
 
         // the we "create" a render target view which binds the swap chain buffer (ID3D12Resource[n]) to the rtv handle
@@ -154,7 +154,7 @@ static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRe
         rtvHandle.Offset(1, rtvDescriptorSize);
     }
 
-    return std::make_tuple(rtvDescriptorHeap, renderTargets);
+    return std::make_tuple(rtvDescriptorHeap, rtvDescriptorSize, renderTargets);
 }
 
 static std::vector<ID3D12CommandAllocator*> createCommandAllocators(ID3D12Device *device)
@@ -207,6 +207,103 @@ static std::tuple<HANDLE, std::vector<UINT64>, std::vector<ID3D12Fence*>> create
     }
 
     return std::make_tuple(fenceEvent, fenceValue, fence);
+}
+
+static UINT WaitForPreviousFrame(IDXGISwapChain3 *swapChain, const std::vector<ID3D12Fence*> &fence, std::vector<UINT64> &fenceValue, const HANDLE fenceEvent)
+{
+    HRESULT hr;
+
+    auto frameIndex = swapChain->GetCurrentBackBufferIndex();
+
+    if (fence[frameIndex]->GetCompletedValue() < fenceValue[frameIndex])
+    {
+        // we have the fence create an event which is signaled once the fence's current value is "fenceValue"
+        hr = fence[frameIndex]->SetEventOnCompletion(fenceValue[frameIndex], fenceEvent);
+        if (FAILED(hr))
+        {
+            // TODO?
+            //Running = false;
+        }
+
+        // We will wait until the fence has triggered the event that it's current value has reached "fenceValue". once it's value
+        // has reached "fenceValue", we know the command queue has finished executing
+        WaitForSingleObject(fenceEvent, INFINITE);
+    }
+
+    // increment fenceValue for next frame
+    fenceValue[frameIndex]++;
+
+    return frameIndex;
+}
+
+static UINT UpdatePipeline(
+    IDXGISwapChain3 *swapChain,
+    const std::vector<ID3D12Fence*>& fence,
+    std::vector<UINT64>& fenceValue,
+    const HANDLE fenceEvent,
+    const std::vector<ID3D12CommandAllocator*>& commandAllocator,
+    ID3D12GraphicsCommandList *commandList,
+    const std::vector<ID3D12Resource*> &renderTargets,
+    ID3D12DescriptorHeap *rtvDescriptorHeap,
+    const UINT rtvDescriptorSize)
+{
+    auto frameIndex = WaitForPreviousFrame(swapChain, fence, fenceValue, fenceEvent);
+
+    HRESULT hr = commandAllocator[frameIndex]->Reset();
+    if (FAILED(hr))
+    {
+        // TODO?
+        //Running = false;
+    }
+
+    hr = commandList->Reset(commandAllocator[frameIndex], NULL);
+    if (FAILED(hr))
+    {
+        // TODO?
+        //Running = false;
+    }
+
+    commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, rtvDescriptorSize);
+
+    commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+    if (0 == frameIndex)
+    {
+        const float clearColor[] = { 0.2f, 0.9f, 0.1f, 1.0f };
+        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    }
+    else
+    {
+        const float clearColor[] = { 1.0f, 0.6f, 0.9f, 1.0f };
+        commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    }
+
+    commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+    hr = commandList->Close();
+    if (FAILED(hr))
+    {
+        // TODO?
+        //Running = false;
+    }
+
+    return frameIndex;
+}
+
+static void render(ID3D12CommandList *commandList, ID3D12CommandQueue *commandQueue, UINT frameIndex, const std::vector<ID3D12Fence*> &fence, const std::vector<UINT64> &fenceValue)
+{
+    ID3D12CommandList* ppCommandLists[] = { commandList };
+
+    commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+    HRESULT hr = commandQueue->Signal(fence[frameIndex], fenceValue[frameIndex]);
+    if (FAILED(hr))
+    {
+        // TODO?
+        //Running = false;
+    }
 }
 
 int main()
@@ -268,7 +365,7 @@ int main()
 
     auto swapChain = createSwapChain(640, 480, commandQueue, factory, glfwGetWin32Window(window));
 
-    auto [rtHeap, renderTargets] = createRenderTargetViews(device, swapChain);
+    auto [rtHeap, rtHeapSize, renderTargets] = createRenderTargetViews(device, swapChain);
 
     auto commandAllocators = createCommandAllocators(device);
 
@@ -281,10 +378,40 @@ int main()
         DXGI_DEBUG_RLO_ALL
     );
 
+    while (!glfwWindowShouldClose(window))
+    {
+        auto frameIndex = UpdatePipeline(
+            swapChain,
+            fence,
+            fenceValue,
+            fenceEvent,
+            commandAllocators,
+            commandList,
+            renderTargets,
+            rtHeap,
+            rtHeapSize
+        );
+        render(commandList, commandQueue, frameIndex, fence, fenceValue);
+        HRESULT hr = swapChain->Present(0, 0);
+        if (FAILED(hr))
+        {
+            // TODO?
+            //Running = false;
+        }
+        glfwPollEvents();
+    }
+
+    for (int i = 0; i < 2; ++i)
+    {
+        WaitForPreviousFrame(swapChain, fence, fenceValue, fenceEvent);
+        swapChain->Present(0, 0);
+    }
+
     for (auto f : fence)
     {
         f->Release();
     }
+    CloseHandle(fenceEvent);
 
     commandList->Release();
 
