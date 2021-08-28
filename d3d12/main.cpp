@@ -56,6 +56,20 @@ static D3D_FEATURE_LEVEL checkFeatureSupport(ID3D12Device *device)
     return featureLevel;
 }
 
+static ID3D12CommandQueue *createCommandQueue(ID3D12Device* device)
+{
+    D3D12_COMMAND_QUEUE_DESC cqDesc = {};
+
+    ID3D12CommandQueue *commandQueue = nullptr;
+    HRESULT hr = device->CreateCommandQueue(&cqDesc, IID_PPV_ARGS(&commandQueue)); // create the command queue
+    if (FAILED(hr))
+    {
+        return nullptr;
+    }
+
+    return commandQueue;
+}
+
 int main()
 {
     HRESULT result;
@@ -97,11 +111,14 @@ int main()
 
     checkFeatureSupport(device);
 
+    auto commandQueue = createCommandQueue(device);
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
 
+    commandQueue->Release();
     device->Release();
     dxgiDebug->Release();
     adapter->Release();
