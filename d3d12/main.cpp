@@ -1,7 +1,9 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <dxgidebug.h>
+#include <directx/d3dx12.h>
 #include <cassert>
+#include <tuple>
 
 #define GLFW_INCLUDE_NONE
 #include "GLFW/glfw3.h"
@@ -116,6 +118,45 @@ static IDXGISwapChain3 *createSwapChain(const int width, const int height, ID3D1
     return swapChain;
 }
 
+static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRenderTargetViews(ID3D12Device *device, IDXGISwapChain3 *swapChain)
+{
+    D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
+    rtvHeapDesc.NumDescriptors = 2;
+    rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    ID3D12DescriptorHeap *rtvDescriptorHeap = nullptr;
+    HRESULT hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvDescriptorHeap));
+    if (FAILED(hr))
+    {
+        return std::make_tuple(nullptr, std::vector<ID3D12Resource*>());
+    }
+
+    auto rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+    std::vector<ID3D12Resource*> renderTargets;
+    renderTargets.resize(2);
+    for (int i = 0; i < 2; i++)
+    {
+        // first we get the n'th buffer in the swap chain and store it in the n'th
+        // position of our ID3D12Resource array
+        hr = swapChain->GetBuffer(i, IID_PPV_ARGS(&renderTargets[i]));
+        if (FAILED(hr))
+        {
+            return std::make_tuple(nullptr, std::vector<ID3D12Resource*>());
+        }
+
+        // the we "create" a render target view which binds the swap chain buffer (ID3D12Resource[n]) to the rtv handle
+        device->CreateRenderTargetView(renderTargets[i], nullptr, rtvHandle);
+
+        // we increment the rtv handle by the rtv descriptor size we got above
+        rtvHandle.Offset(1, rtvDescriptorSize);
+    }
+
+    return std::make_tuple(rtvDescriptorHeap, renderTargets);
+}
+
 int main()
 {
     HRESULT result;
@@ -175,10 +216,18 @@ int main()
 
     auto swapChain = createSwapChain(640, 480, commandQueue, factory, glfwGetWin32Window(window));
 
+    auto [rtHeap, renderTargets] = createRenderTargetViews(device, swapChain);
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
+
+    for (auto rt : renderTargets)
+    {
+        rt->Release();
+    }
+    rtHeap->Release();
 
     swapChain->Release();
 
