@@ -157,6 +157,21 @@ static std::tuple< ID3D12DescriptorHeap*, std::vector<ID3D12Resource*>> createRe
     return std::make_tuple(rtvDescriptorHeap, renderTargets);
 }
 
+static std::vector<ID3D12CommandAllocator*> createCommandAllocators(ID3D12Device *device)
+{
+    std::vector<ID3D12CommandAllocator*> commandAllocator;
+    commandAllocator.resize(2);
+    for (int i = 0; i < 2; i++)
+    {
+        HRESULT hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator[i]));
+        if (FAILED(hr))
+        {
+            return std::vector<ID3D12CommandAllocator*>();
+        }
+    }
+    return commandAllocator;
+}
+
 int main()
 {
     HRESULT result;
@@ -218,10 +233,17 @@ int main()
 
     auto [rtHeap, renderTargets] = createRenderTargetViews(device, swapChain);
 
+    auto commandAllocators = createCommandAllocators(device);
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
+
+    for (auto ca : commandAllocators)
+    {
+        ca->Release();
+    }
 
     for (auto rt : renderTargets)
     {
