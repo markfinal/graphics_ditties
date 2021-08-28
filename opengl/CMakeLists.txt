@@ -14,31 +14,31 @@ FetchContent_MakeAvailable(glfw)
 
 find_package(OpenGL REQUIRED)
 
-add_executable(opengl)
+add_executable(opengl_ditty)
 target_sources(
-    opengl
+    opengl_ditty
     PRIVATE
     main.cpp
 )
 set_target_properties(
-    opengl
+    opengl_ditty
     PROPERTIES
     MACOSX_BUNDLE ON
 )
 target_compile_features(
-    opengl
+    opengl_ditty
     PRIVATE
     cxx_std_17
 )
 if(APPLE)
     target_compile_definitions(
-        opengl
+        opengl_ditty
         PRIVATE
         GL_SILENCE_DEPRECATION
     )
 endif()
 target_link_libraries(
-    opengl
+    opengl_ditty
     PRIVATE
     glfw
     OpenGL::GL

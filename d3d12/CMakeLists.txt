@@ -21,19 +21,19 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(DXHeaders)
 
-add_executable(d3d12)
+add_executable(d3d12_ditty)
 target_sources(
-    d3d12
+    d3d12_ditty
     PRIVATE
     main.cpp
 )
 target_compile_features(
-    d3d12
+    d3d12_ditty
     PRIVATE
     cxx_std_17
 )
 target_link_libraries(
-    d3d12
+    d3d12_ditty
     PRIVATE
     d3d12.lib
     dxgi.lib
