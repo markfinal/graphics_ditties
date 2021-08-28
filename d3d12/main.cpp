@@ -184,6 +184,31 @@ static ID3D12GraphicsCommandList *createCommandList(ID3D12Device *device, const 
     return commandList;
 }
 
+static std::tuple<HANDLE, std::vector<UINT64>, std::vector<ID3D12Fence*>> createFences(ID3D12Device *device)
+{
+    std::vector<ID3D12Fence*> fence;
+    std::vector<UINT64> fenceValue;
+    fence.resize(2);
+    fenceValue.resize(2);
+    for (int i = 0; i < 2; i++)
+    {
+        HRESULT hr = device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence[i]));
+        if (FAILED(hr))
+        {
+            return std::make_tuple(nullptr, std::vector<UINT64>(), std::vector<ID3D12Fence*>());
+        }
+        fenceValue[i] = 0;
+    }
+
+    auto fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+    if (fenceEvent == nullptr)
+    {
+        return std::make_tuple(nullptr, std::vector<UINT64>(), std::vector<ID3D12Fence*>());
+    }
+
+    return std::make_tuple(fenceEvent, fenceValue, fence);
+}
+
 int main()
 {
     HRESULT result;
@@ -249,10 +274,17 @@ int main()
 
     auto commandList = createCommandList(device, commandAllocators);
 
+    auto [fenceEvent, fenceValue, fence] = createFences(device);
+
     dxgiDebug->ReportLiveObjects(
         DXGI_DEBUG_ALL,
         DXGI_DEBUG_RLO_ALL
     );
+
+    for (auto f : fence)
+    {
+        f->Release();
+    }
 
     commandList->Release();
 
