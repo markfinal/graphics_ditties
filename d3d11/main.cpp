@@ -36,6 +36,8 @@ int main()
 
     std::cout << "Running against GLFW " << major << "." << minor << "." << revision << std::endl;
 
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     GLFWwindow *window = glfwCreateWindow(640, 480, "D3D11 ditty", NULL, NULL);
 
     HRESULT result;

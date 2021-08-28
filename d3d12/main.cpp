@@ -375,6 +375,8 @@ int main()
 
     std::cout << "Running against GLFW " << major << "." << minor << "." << revision << std::endl;
 
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     GLFWwindow *window = glfwCreateWindow(640, 480, "D3D12 ditty", NULL, NULL);
 
     auto swapChain = createSwapChain(640, 480, commandQueue, factory, glfwGetWin32Window(window));
