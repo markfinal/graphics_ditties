@@ -7,29 +7,29 @@ int main()
 {
     HRESULT result;
 
-    UINT dxgiFactoryFlags = 0;
-    dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-
-    IDXGIFactory4* factory = nullptr;
-    result = CreateDXGIFactory2(
-        dxgiFactoryFlags,
-        IID_PPV_ARGS(&factory)
-    );
-    assert(SUCCEEDED(result));
-
-    IDXGIDebug* dxgiDebug = nullptr;
-    result = DXGIGetDebugInterface1(
-        0,
-        IID_PPV_ARGS(&dxgiDebug)
-    );
-    assert(SUCCEEDED(result));
-
     ID3D12Debug *debugInterface = nullptr;
     result = D3D12GetDebugInterface(
         IID_PPV_ARGS(&debugInterface)
     );
     assert(SUCCEEDED(result));
     debugInterface->EnableDebugLayer();
+
+    UINT dxgiFactoryFlags = 0;
+    dxgiFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+
+    IDXGIFactory4 *factory = nullptr;
+    result = CreateDXGIFactory2(
+        dxgiFactoryFlags,
+        IID_PPV_ARGS(&factory)
+    );
+    assert(SUCCEEDED(result));
+
+    IDXGIDebug *dxgiDebug = nullptr;
+    result = DXGIGetDebugInterface1(
+        0,
+        IID_PPV_ARGS(&dxgiDebug)
+    );
+    assert(SUCCEEDED(result));
 
     ID3D12Device *device = nullptr;
     result = D3D12CreateDevice(
@@ -45,9 +45,9 @@ int main()
     );
 
     device->Release();
-    debugInterface->Release();
     dxgiDebug->Release();
     factory->Release();
+    debugInterface->Release();
 
     return 0;
 }
